@@ -14,28 +14,64 @@ PmergeMe::~PmergeMe() {};
 
 template <typename T>
 
-void printList(T &list)
+void printList(const T &list)
 {
-    for (std::vector<int>::const_iterator it = list.begin(); it != list.end(); it++)
+    for (typename T::const_iterator it = list.begin(); it != list.end(); ++it)
         std::cout << *it << " ";
     std::cout << std::endl;
 }
 
-int jackobsthalNum(int index)
+static int jackobsthalNum(int index)
 {
     return round((pow(2, index) - pow(-1, index)) / 3);
+}
+
+template <typename T>
+void mainChainInsertion(T &mainChain, T &losers)
+{
+    size_t count = 0;
+    size_t listIndex = 0;
+    size_t diff, jackNum;
+
+    if (losers.size() == 1)
+    {
+        mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), losers[0]), losers[0]);
+        return ;
+    }
+
+    for (size_t index = 3; count < losers.size(); index++)
+    {
+        diff = jackobsthalNum(index) - jackobsthalNum(index - 1);
+        jackNum = jackobsthalNum(index);
+
+        for (size_t k = 0; k < diff; k++)
+        {
+            if (count >= losers.size())
+                break;
+            listIndex = jackNum - k - 2;
+            if (listIndex >= losers.size())
+            {
+                listIndex = losers.size() - 1; // when jackobsthal numbers are out of bound
+                jackNum = jackobsthalNum(index - 1) - 2;
+                while (listIndex > jackNum)
+                {
+                    mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), losers[listIndex]), losers[listIndex]);
+                    listIndex--;
+                    count++;
+                }
+                break;
+            }
+            mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), losers[listIndex]), losers[listIndex]);
+            count++;
+        }
+    }
 }
 
 std::vector<int> PmergeMe::PmergeMeVec(std::vector<int> &list)
 {
     if (list.size() <= 1)
         return (list);
-    if (list.size() == 2)
-    {
-        if (list[0] > list[1])
-            std::swap(list[0], list[1]);
-        return (list);
-    }
+
     std::vector<int> winners;
     std::vector<int> losers;
     std::vector<std::pair<int, int> > pairs;
@@ -54,15 +90,17 @@ std::vector<int> PmergeMe::PmergeMeVec(std::vector<int> &list)
     losers.clear();
     for (size_t i = 0; i < winners.size(); i++)
     {
-        for (std::vector<std::pair<int, int> >::const_iterator it = pairs.begin(); it != pairs.end(); it++)
+        for (std::vector<std::pair<int, int> >::iterator it = pairs.begin(); it != pairs.end(); it++)
         {
             if (winners[i] == it->second)
             {
                 losers.push_back(it->first);
+                pairs.erase(it);
                 break;
             }
         }
     }
+
     // main chain
     std::vector<int> mainChain = winners;
 
@@ -71,35 +109,19 @@ std::vector<int> PmergeMe::PmergeMeVec(std::vector<int> &list)
     winners.clear(); // for cleaning
 
     // ? inserting elements into mainChain with jackobsthal sequence
-    for (int index = 3; index < 10; index++)
-    {
-        int jackNum = jackobsthalNum(index);
-        int diff = jackobsthalNum(index) - jackobsthalNum(index - 1);
+    mainChainInsertion(mainChain, losers);
 
-        for (int i = 0; i < diff; i++)
-        {
-            size_t listIndex = jackNum - i - 1; // jackNum - i - 1 =>  - 1 means (we previously moved b1 from losers to mainChain so we take into account that its b1 and its already moved 
-            //     listIndex = losers.size() - 1;
-            // mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), listIndex), listIndex);
-            std::cout << listIndex << " ";
-        }
-    }
     if (list.size() % 2 != 0)
         mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), list.back()), list.back());
 
-    return mainChain;
+    return (mainChain);
 }
 
 std::deque<int> PmergeMe::PmergeMeDeq(std::deque<int> &list)
 {
     if (list.size() <= 1)
         return (list);
-    if (list.size() == 2)
-    {
-        if (list[0] > list[1])
-            std::swap(list[0], list[1]);
-        return (list);
-    }
+
     std::deque<int> winners;
     std::deque<int> losers;
     std::deque<std::pair<int, int> > pairs;
@@ -118,15 +140,17 @@ std::deque<int> PmergeMe::PmergeMeDeq(std::deque<int> &list)
     losers.clear();
     for (size_t i = 0; i < winners.size(); i++)
     {
-        for (std::deque<std::pair<int, int> >::const_iterator it = pairs.begin(); it != pairs.end(); it++)
+        for (std::deque<std::pair<int, int> >::iterator it = pairs.begin(); it != pairs.end(); it++)
         {
             if (winners[i] == it->second)
             {
                 losers.push_back(it->first);
+                pairs.erase(it);
                 break;
             }
         }
     }
+
     // main chain
     std::deque<int> mainChain = winners;
 
@@ -134,11 +158,11 @@ std::deque<int> PmergeMe::PmergeMeDeq(std::deque<int> &list)
     losers.erase(losers.begin());
     winners.clear(); // for cleaning
 
-    // ? inserting elements into mainChain
-    for (size_t i = 0; i < losers.size(); i++)
-        mainChain.insert(lower_bound(mainChain.begin(), mainChain.end(), losers[i]), losers[i]);
+    // ? inserting elements into mainChain with jackobsthal sequence
+    mainChainInsertion(mainChain, losers);
+
     if (list.size() % 2 != 0)
-        mainChain.insert(lower_bound(mainChain.begin(), mainChain.end(), list.back()), list.back());
+        mainChain.insert(std::lower_bound(mainChain.begin(), mainChain.end(), list.back()), list.back());
 
     return (mainChain);
 }
@@ -154,12 +178,12 @@ void PmergeMe::mergeInsertionSort(std::vector<int> vecList, std::deque<int> deqL
     start = clock();
     vecList = PmergeMeVec(vecList);
     end = clock();
-
     std::cout << "\nAfter: ";
     printList(vecList);
     time_spent = 1e6 * (end - start) / CLOCKS_PER_SEC;
     std::cout << "Time to process a range of " << vecList.size() << " elements with std::vector : " << std::fixed << std::setprecision(5) << time_spent << " us\n";
 
+    (void)deqList;
     start = clock();
     deqList = PmergeMeDeq(deqList);
     end = clock();
